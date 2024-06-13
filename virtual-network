@@ -1,0 +1,81 @@
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_virtual_network" "vnet" {
+  name                = "myVNet"
+  address_space       = ["192.168.0.0/25"]
+  location            = "East US"
+  resource_group_name = "myResourceGroup"
+  dns_servers         = ["192.168.0.4", "192.168.0.5"] # Example DNS servers
+}
+
+resource "azurerm_subnet" "subnet1" {
+  name                 = "subnet1"
+  resource_group_name  = azurerm_virtual_network.vnet.resource_group_name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["192.168.0.64/27"]
+}
+
+resource "azurerm_subnet" "subnet2" {
+  name                 = "subnet2"
+  resource_group_name  = azurerm_virtual_network.vnet.resource_group_name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["192.168.0.96/27"]
+}
+
+resource "azurerm_network_security_group" "subnet_nsg1" {
+  name                = "subnet-security-list-1"
+  location            = azurerm_virtual_network.vnet.location
+  resource_group_name = azurerm_virtual_network.vnet.resource_group_name
+}
+
+resource "azurerm_network_security_group" "subnet_nsg2" {
+  name                = "subnet-security-list-2"
+  location            = azurerm_virtual_network.vnet.location
+  resource_group_name = azurerm_virtual_network.vnet.resource_group_name
+}
+
+resource "azurerm_subnet_network_security_group_association" "subnet1_nsg_association" {
+  subnet_id                 = azurerm_subnet.subnet1.id
+  network_security_group_id = azurerm_network_security_group.subnet_nsg1.id
+}
+
+resource "azurerm_subnet_network_security_group_association" "subnet2_nsg_association" {
+  subnet_id                 = azurerm_subnet.subnet2.id
+  network_security_group_id = azurerm_network_security_group.subnet_nsg2.id
+}
+
+resource "azurerm_route_table" "subnet1_rt" {
+  name                = "subnet-1-route-table"
+  location            = azurerm_virtual_network.vnet.location
+  resource_group_name = azurerm_virtual_network.vnet.resource_group_name
+
+  route {
+    name                   = "route1"
+    address_prefix         = "10.10.0.0/25"
+    next_hop_type          = "VirtualNetworkGateway"
+  }
+}
+
+resource "azurerm_route_table" "subnet2_rt" {
+  name                = "subnet-2-route-table"
+  location            = azurerm_virtual_network.vnet.location
+  resource_group_name = azurerm_virtual_network.vnet.resource_group_name
+
+  route {
+    name                   = "route2"
+    address_prefix         = "10.10.0.0/25"
+    next_hop_type          = "VirtualNetworkGateway"
+  }
+}
+
+resource "azurerm_subnet_route_table_association" "subnet1_rt_association" {
+  subnet_id      = azurerm_subnet.subnet1.id
+  route_table_id = azurerm_route_table.subnet1_rt.id
+}
+
+resource "azurerm_subnet_route_table_association" "subnet2_rt_association" {
+  subnet_id      = azurerm_subnet.subnet2.id
+  route_table_id = azurerm_route_table.subnet2_rt.id
+}
